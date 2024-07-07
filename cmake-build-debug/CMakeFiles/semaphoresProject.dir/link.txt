@@ -1,0 +1,1 @@
+/usr/bin/clang -g CMakeFiles/semaphoresProject.dir/main.c.o -o semaphoresProject 

@@ -1,0 +1,3 @@
+/mnt/c/Users/saifb/CLionProjects/semaphoresProject/cmake-build-debug/CMakeFiles/semaphoresProject.dir
+/mnt/c/Users/saifb/CLionProjects/semaphoresProject/cmake-build-debug/CMakeFiles/edit_cache.dir
+/mnt/c/Users/saifb/CLionProjects/semaphoresProject/cmake-build-debug/CMakeFiles/rebuild_cache.dir
