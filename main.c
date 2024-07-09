@@ -23,6 +23,7 @@ int queue = 0;
 int NUM_CUSTOMERS = 20;
 int carts_available = NUM_CARTS;
 int scannersAvailable = 10;
+int scannersPickup = 0;
 int cashier_queue[NUM_CASHIERS] = {0};
 int scanner_queue[NUM_CASHIERS] = {0};
 
@@ -32,12 +33,19 @@ void shopping(int customer_id);
 void checkout(int customer_id, int chosen_cashier);
 void checkoutScanner(int customer_id, int chosen_terminal);
 void return_cart(int customer_id);
-
+void backupTerminal(int customer_id, int chosen_terminal);
 
 
 void *customerScanner(void *arg) {
     int customer_id = *((int *) arg);
 
+
+    if(scannersAvailable  < 5){
+        scannersAvailable = scannersAvailable + scannersPickup;
+        printf("An Employee is moving the handheld scanners to the pickup Location.\n");
+        sleep(4);
+        printf("An Employee has returned the handheld scanners to the pickup Location. Handheld scanners available: %d\n", scannersAvailable);
+    }
     // Customer arrives and tries to take a cart
     sem_wait(&terminalSemaphore);
     if (scannersAvailable > 0) {
@@ -110,8 +118,8 @@ void *customerScanner(void *arg) {
 
             // Return the scanner and go home
             sem_wait(&terminalSemaphore);
-            scannersAvailable++;
-            printf("Customer [%d] returned the scanner. Scanners available: %d\n", customer_id, scannersAvailable);
+            scannersPickup++;
+            printf("Customer [%d] returned the scanner.\n", customer_id);
             sem_post(&terminalSemaphore);
 
         }
@@ -134,6 +142,8 @@ void *customerScanner(void *arg) {
 
             // After shopping, proceed to checkout
             int chosen_cashier = 0;
+            int chosen_terminal;
+
 
             // Choose the cashier with the smallest or no queue
             for (int i = 1; i < NUM_CASHIERS; i++) {
@@ -146,7 +156,24 @@ void *customerScanner(void *arg) {
 
                 sem_post(&cashiers_Semaphores[i]); // Release semaphore for each cashier
             }
+            
+            if (cashier_queue[chosen_cashier] >= 1){
+                if (scanner_queue[0] <= 1) {
+                    chosen_terminal = 0;
+                    scanner_queue[chosen_terminal]++;
+                    backupTerminal(customer_id, 0);
+                    pthread_exit(NULL);
+                   // sem_post(&terminalSemaphorequeue);
+                } else if (scanner_queue[1] <= 0) {
+                    chosen_terminal = 1;
+                    scanner_queue[chosen_terminal]++;
+                    backupTerminal(customer_id, 1);
+                    pthread_exit(NULL);
+                  //  sem_post(&terminalSemaphorequeue);
 
+                }
+                
+            }
             // Join the chosen cashier's queue
             sem_wait(&cashier_queue_mutex[chosen_cashier]);
             cashier_queue[chosen_cashier]++;
@@ -189,20 +216,51 @@ void *customerScanner(void *arg) {
     }
 
 
+void backupTerminal(int customer_id, int chosen_terminal){
+
+    sem_wait(&terminal_queue_mutex[chosen_terminal]);
+    printf("Customer [%d] is checking out at terminal [%d].\n", customer_id, chosen_terminal);
+    sem_post(&terminal_queue_mutex[chosen_terminal]);
+
+    // Wait for the chosen cashier to signal the customer's turn
+    sem_wait(&terminal_ready[chosen_terminal]);
+
+    // Simulate checkout time
+    checkoutScanner(customer_id, chosen_terminal);
+
+    // Customer finishes checkout, signal to the next customer in line
+    sem_post(&terminal_ready[chosen_terminal]);
+
+    // Update cashier queue
+    sem_wait(&terminal_queue_mutex[chosen_terminal]);
+    printf("Customer [%d] checking at terminal [%d] has checked out.\n", customer_id, chosen_terminal);
+    scanner_queue[chosen_terminal]--;
+    sem_post(&terminal_queue_mutex[chosen_terminal]);
+
+    // Return the scanner and go home
+    // Return the cart and go home
+    return_cart(customer_id);
+
+}
+
+
+
+
+
     void shopping(int customer_id) {
-        int shopping_time = (rand() % 8) + 3; // Random checkout time between 3 to 10 seconds
+        int shopping_time = 2; // Random return time between 1 to 10 seconds
         printf("Customer [%d] is shopping for %d seconds.\n", customer_id, shopping_time);
         sleep(shopping_time);
     }
 
     void checkout(int customer_id, int chosen_cashier) {
-        int checkout_time = (rand() % 4) + 9; // Random checkout time between 9 to 12 second
+        int checkout_time = 10; // Random return time between 3 to 10 seconds
         printf("Customer [%d] is checking out at Cashier [%d] for %d seconds.\n", customer_id, chosen_cashier,
                checkout_time);
         sleep(checkout_time);
     }
     void checkoutScanner(int customer_id, int chosen_terminal) {
-        int checkout_time = (rand() % 4) + 9; // Random checkout time between 9 to 12 seconds
+        int checkout_time = 1; // Random checkout time between 9 to 12 seconds
 
 
         int randomCheck = rand() % 4;
