@@ -51,16 +51,18 @@ void backupTerminal(int customer_id, int chosen_terminal);
 void *customerScanner(void *arg) {
     int customer_id = *((int *) arg);
 
+
+    sem_wait(&terminalSemaphore);
+
     // check if scannersAvailable < 5 to then return the scanners to the pickup location
-    if (scannersAvailable < 5) {
-        scannersAvailable = scannersAvailable + scannersPickup;
+    if (scannersAvailable < 5 && scannersPickup > 4) {
         printf("An Employee is moving the handheld scanners to the pickup Location.\n");
         sleep(4);
+        scannersAvailable = scannersAvailable + scannersPickup;
+        scannersPickup = 0;
         printf("An Employee has returned the handheld scanners to the pickup Location. Handheld scanners available: %d\n",
                scannersAvailable);
     }
-
-    sem_wait(&terminalSemaphore);
         scannersAvailable--;
         printf("Customer [%d] takes a handheld scanner. Handheld scanners available: %d\n", customer_id,
                scannersAvailable);
@@ -371,6 +373,17 @@ int main() {
     for (int i = 0; i < NUM_CUSTOMERS; i++) {
         pthread_join(customers[i], NULL);
     }
+
+    // return the rest of the scanners
+    if (scannersAvailable < 11) {
+        printf("An Employee is moving the rest of the handheld scanners to the pickup Location.\n");
+        sleep(4);
+        scannersAvailable = scannersAvailable + scannersPickup;
+        scannersPickup = 0;
+        printf("An Employee has returned the handheld scanners to the pickup Location. Handheld scanners available: %d\n",
+               scannersAvailable);
+    }
+
 
     // initialize cart and cashier semaphores
     sem_destroy(&cartSemaphore);
